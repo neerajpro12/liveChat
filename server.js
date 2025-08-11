@@ -11,6 +11,16 @@ app.get("/", (req, res) => {
     res.sendFile(__dirname + "/index.html");
 })
 
+const readline = require("readline");
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+server.listen(3000, '0.0.0.0', () => {
+    console.log("Server running on PORT 3000");
+});
+
 const users = {};
 let userNameGlobal = "";
 //Listen for socket connection
@@ -23,7 +33,7 @@ io.on("connection", (socket) => {
         users[socket.id] = username;
         userNameGlobal = username;
         // console.log(`Your ID: ${socket.id}, Username: ${username}`);
-        io.to(socket.id).emit("displayUserName", {id: socket.id, name: username});
+        io.to(socket.id).emit("displayUserName", { id: socket.id, name: username });
         io.emit("userList", users);
         // console.log(`User ${socket.id} is ${username}`);
         socket.emit("serverMessage", `Welcome to the Server, ${username}!`); //Message to new comer
@@ -42,8 +52,8 @@ io.on("connection", (socket) => {
     });
 
     //Receice and send Private Message
-    socket.on("privateMessage", ({to, message}) => {
-        io.to(to).emit("privateMessage", {from: socket.id, name: userNameGlobal , message});
+    socket.on("privateMessage", ({ to, message }) => {
+        io.to(to).emit("privateMessage", { from: socket.id, name: userNameGlobal, message });
     });
 
 
@@ -53,6 +63,9 @@ io.on("connection", (socket) => {
     //     io.emit("message", `Current Count: ${counter}`);
     // }, 5000);
 
+    //Remove User
+    // removeUser(id);
+
     //Disconnect
     socket.on("disconnect", () => {
         delete users[socket.id];
@@ -61,6 +74,91 @@ io.on("connection", (socket) => {
     });
 });
 
-server.listen(3000,'0.0.0.0' , () => {
-    console.log("Server running on PORT 3000}");
-});
+function showMainMenu() {
+    rl.question("", handleMainMenu);
+}
+
+function handleMainMenu(option) {
+    switch (option.trim().toLowerCase()) {
+        case "help":
+            showHelp();
+            break;
+
+        case "close":
+            console.log("🛑 Shutting down server...");
+            rl.close();
+            process.exit(0);
+            break;
+
+        case "list":
+            if (Object.keys(users).length === 0) {
+                console.log("⚠️ No users connected.");
+            } else {
+                console.log("👥 Connected Users:");
+                for (const [id, name] of Object.entries(users)) {
+                    console.log(`- ${name} (${id})`);
+                }
+            }
+            break;
+
+        case "send":
+            return promptSendMessage(); // Don't call showMainMenu here — it's handled inside
+
+        case "kick":
+            return kickUser();
+         
+        default:
+            console.log("❌ Unknown command. Type 'help' for available commands.");
+            break;
+    }
+
+    // Always return to main menu unless promptSendMessage() took over
+    showMainMenu();
+}
+
+function promptSendMessage() {
+    rl.question("Send to (all or socket ID): ", (target) => {
+        rl.question("Message: ", (message) => {
+            if (target === "all") {
+                io.emit("serverMessage", `[Admin] ${message}`);
+                console.log("✅ Message sent to all clients.");
+            } else if (users[target]) {
+                io.to(target).emit("serverMessage", `[Admin] ${message}`);
+                console.log(`✅ Message sent to ${users[target]} (${target})`);
+            } else {
+                console.log("❌ Invalid socket ID.");
+            }
+
+            // After sending, return to menu
+            showMainMenu();
+        });
+    });
+}
+
+function kickUser() {
+    rl.question("Enter ID: ", (target) => {
+        removeUser(target);
+    });
+    showMainMenu();
+}
+
+function removeUser(userId) {
+    const us = io.sockets.sockets.get(userId);
+    if (us) {
+        us.disconnect();
+    }
+    delete users[userId];
+}
+
+function showHelp() {
+    console.log(`
+=== Available Commands ===
+help   - Show this help menu
+list   - Show connected users
+send   - Send message to a user or all
+close  - Shut down the server
+==========================
+`);
+}
+
+showMainMenu();
