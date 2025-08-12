@@ -106,7 +106,14 @@ function handleMainMenu(option) {
 
         case "kick":
             return kickUser();
-         
+
+        case "refreshall":
+            return refreshAll(rl, io, showMainMenu); // pass everything
+
+        case "refresh":
+            return refreshEach(rl, showMainMenu); // fixed typo and args
+
+
         default:
             console.log("❌ Unknown command. Type 'help' for available commands.");
             break;
@@ -136,10 +143,12 @@ function promptSendMessage() {
 }
 
 function kickUser() {
-    rl.question("Enter ID: ", (target) => {
-        removeUser(target);
+    askForIds(rl, (ids) => {
+        ids.forEach(id => {
+            removeUser(id);
+        });
+        showMainMenu(); // Return to menu after kicking
     });
-    showMainMenu();
 }
 
 function removeUser(userId) {
@@ -160,5 +169,47 @@ close  - Shut down the server
 ==========================
 `);
 }
+
+function refreshAll(r1, io, callback) {
+    r1.question("Are you sure (y/n): ", (answer) => {
+        if (answer.toLowerCase() === 'y') {
+            io.emit("refresh");
+            console.log("All Clients Refreshed!");
+            if (callback) callback();
+        }
+    });
+}
+
+function refreshIds(ids) {
+    ids.forEach(id => {
+        const socket = io.sockets.sockets.get(id.trim());
+        if (socket) {
+            socket.emit("refresh");
+        }
+    });
+}
+
+function refreshEach(r1, callback) {
+    askForIds(r1, (ids) => {
+        ids.forEach(id => {
+            const socket = io.sockets.sockets.get(id);
+            if (socket) {
+                socket.emit("refresh");
+            }
+        });
+        if (callback) callback();
+    });
+}
+
+function askForIds(r1, callback) {
+    r1.question("Enter id(s) [use , to separate ids]: ", (answer) => {
+        const ids = answer
+            .split(',')
+            .map(id => id.trim())
+            .filter(id => id.length > 0);
+        callback(ids);
+    });
+}
+
 
 showMainMenu();
