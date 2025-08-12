@@ -4,9 +4,9 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);//attach socket.io to http server
+const io = new Server(server); //attach socket.io to http server
 
-//Serve a smple html file later
+//Serve a sample html file later
 app.get("/", (req, res) => {
     res.sendFile(__dirname + "/index.html");
 })
@@ -85,7 +85,7 @@ function handleMainMenu(option) {
             break;
 
         case "close":
-            console.log("🛑 Shutting down server...");
+            console.log("Server closed!");
             rl.close();
             process.exit(0);
             break;
@@ -102,52 +102,74 @@ function handleMainMenu(option) {
             break;
 
         case "send":
-            return promptSendMessage(); // Don't call showMainMenu here — it's handled inside
+            return promptSendMessage();
 
         case "kick":
             return kickUser();
 
         case "refreshall":
-            return refreshAll(rl, io, showMainMenu); // pass everything
+            return refreshAll(rl, io, showMainMenu);
 
         case "refresh":
-            return refreshEach(rl, showMainMenu); // fixed typo and args
-
-
-        default:
-            console.log("❌ Unknown command. Type 'help' for available commands.");
-            break;
+            return refreshEach(rl, showMainMenu);
     }
 
-    // Always return to main menu unless promptSendMessage() took over
     showMainMenu();
 }
 
 function promptSendMessage() {
-    rl.question("Send to (all or socket ID): ", (target) => {
-        rl.question("Message: ", (message) => {
-            if (target === "all") {
+    // Collect IDs (all/socket IDs)
+    askForIds(rl, (ids) => {
+        // If 'all' - send to all clients
+        if (ids.length === 1 && ids[0] === 'all') {
+            rl.question("Message: ", (message) => {
                 io.emit("serverMessage", `[Admin] ${message}`);
                 console.log("✅ Message sent to all clients.");
-            } else if (users[target]) {
-                io.to(target).emit("serverMessage", `[Admin] ${message}`);
-                console.log(`✅ Message sent to ${users[target]} (${target})`);
-            } else {
-                console.log("❌ Invalid socket ID.");
-            }
+                showMainMenu();
+            });
+        } else {
+            // send to the specific socket IDs
+            rl.question("Message: ", (message) => {
+                const validIds = ids.filter(id => users[id]);
 
-            // After sending, return to menu
-            showMainMenu();
-        });
+                if (validIds.length === 0) {
+                    console.log("❌ No valid socket IDs found.");
+                } else {
+                    validIds.forEach(id => {
+                        io.to(id).emit("serverMessage", `[Admin] ${message}`);
+                        console.log(`✅ Message sent to ${users[id]} (${id})`);
+                    });
+                }
+
+                showMainMenu();
+            });
+        }
     });
 }
 
 function kickUser() {
     askForIds(rl, (ids) => {
-        ids.forEach(id => {
-            removeUser(id);
-        });
-        showMainMenu(); // Return to menu after kicking
+        if (ids.length === 1 && ids[0] === 'all') {
+            rl.question("Type 'CONFIRM' to confirm kicking all users: ", (confirmation) => {
+                if (confirmation === 'CONFIRM') {
+                    io.sockets.sockets.forEach(socket => {
+                        removeUser(socket.id);
+                        //console.log(`✅ Kicked user ${socket.id}`);
+                    });
+                    console.log("✅ All users have been kicked.");
+                }
+                //  else {
+                //     console.log("❌ Confirmation failed. No users were kicked.");
+                // }
+                showMainMenu();
+            });
+        } else {
+            ids.forEach(id => {
+                removeUser(id);
+                console.log(`✅ Kicked user ${id}`);
+            });
+            showMainMenu();
+        }
     });
 }
 
@@ -180,24 +202,29 @@ function refreshAll(r1, io, callback) {
     });
 }
 
-function refreshIds(ids) {
-    ids.forEach(id => {
-        const socket = io.sockets.sockets.get(id.trim());
-        if (socket) {
-            socket.emit("refresh");
-        }
-    });
-}
-
 function refreshEach(r1, callback) {
     askForIds(r1, (ids) => {
-        ids.forEach(id => {
-            const socket = io.sockets.sockets.get(id);
-            if (socket) {
-                socket.emit("refresh");
-            }
-        });
-        if (callback) callback();
+        if (ids.length === 1 && ids[0] === 'all') {
+            rl.question("Type 'CONFIRM' to confirm: ", (confirmation) => {
+                if (confirmation === 'CONFIRM') {
+                    io.emit("refresh");
+                    console.log("✅ Refresh sent to all clients.");
+                } else {
+                    console.log("❌ Confirmation failed. No refresh sent.");
+                }
+                if (callback) callback();
+            });
+        } else {
+            ids.forEach(id => {
+                const socket = io.sockets.sockets.get(id);
+                if (socket) {
+                    socket.emit("refresh");
+                    console.log(`✅ Refresh sent to socket ID ${id}`);
+                }
+            });
+
+            if (callback) callback();
+        }
     });
 }
 
@@ -210,6 +237,5 @@ function askForIds(r1, callback) {
         callback(ids);
     });
 }
-
 
 showMainMenu();
