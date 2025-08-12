@@ -1,7 +1,6 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server); //attach socket.io to http server
@@ -11,71 +10,197 @@ app.get("/", (req, res) => {
     res.sendFile(__dirname + "/index.html");
 })
 
+let adminAssigned = false;
+let adminId = null;
+let maxConnections = 3;
+
 const readline = require("readline");
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
-server.listen(3000, '0.0.0.0', () => {
-    console.log("Server running on PORT 3000");
+setTimeout(() => {
+    server.listen(3000, '0.0.0.0', () => {
+        console.log("Server running on PORT 3000");
+    });
+}, 5000);
+
+rl.question("Set max connections: ", (input) => {
+    maxConnections = input.trim() === "" ? 3 : parseInt(input);
+    console.log(`Max connections set to: ${maxConnections}`);
+    rl.close();
+    menuReadline();
 });
+
+
 
 const users = {};
-let userNameGlobal = "";
+// let userNameGlobal = "";
+let currentConnections = 0;
+
 //Listen for socket connection
 io.on("connection", (socket) => {
-    console.log("User Connected");
 
-    //Username, Userlist and Welcome
-    socket.on("setUsername", (username) => {
-        socket.username = username;
-        users[socket.id] = username;
-        userNameGlobal = username;
-        // console.log(`Your ID: ${socket.id}, Username: ${username}`);
-        io.to(socket.id).emit("displayUserName", { id: socket.id, name: username });
-        io.emit("userList", users);
-        // console.log(`User ${socket.id} is ${username}`);
-        socket.emit("serverMessage", `Welcome to the Server, ${username}!`); //Message to new comer
-        socket.broadcast.emit("serverMessage", `User with id '${username}' joined.`) //Broadcast to all
-    });
+    if (currentConnections >= maxConnections) { // Close the connection if the limit is reached
+        socket.emit('error', 'Server is at full capacity. Please try again later.');
+        socket.disconnect();
+        console.log('Connection rejected: Server is at full capacity.');
+    } else {
+        currentConnections++;
+        console.log("User Connected");
 
-    //Listen from a client and print
-    socket.on("message", (msg) => {
-        console.log(`${userNameGlobal}: ${msg}`);
-    });
+        //Username, Userlist and Welcome
+        socket.on("setUsername", (username) => {
+            socket.userName = username;
+            // if (!username.trim()) {
+            //     return socket.emit("error", "Username cannot be empty.");
+            // }
 
-    //Listen for a "chatMessage" event from this client
-    socket.on("chatMessage", (msg) => {
-        console.log("Message form client: ", msg);
-        io.emit("chatMessage", msg);
-    });
+            if (Object.values(users).includes(username)) {
+                return socket.emit("error", "Username already taken.");
+            }
 
-    //Receice and send Private Message
-    socket.on("privateMessage", ({ to, message }) => {
-        io.to(to).emit("privateMessage", { from: socket.id, name: userNameGlobal, message });
-    });
+            socket.isAdmin = false;
+            users[socket.id] = username;
+
+            if (!adminAssigned) { // Only assign a new admin if one doesn't exist
+                assignNewAdmin();
+            }
+
+            io.to(socket.id).emit("displayUserName", {
+                id: socket.id,
+                name: username,
+                isAdmin: socket.isAdmin
+            });
+
+            io.emit("userList", users);
+            socket.emit("serverMessage", `Welcome to the chat, ${username}!`);
+            socket.broadcast.emit("serverMessage", `User '${username}' joined.`);
+
+            // if (socket.isAdmin) {
+            //     socket.emit("serverMessage", "You are the admin of this session.");
+            // }
+
+            if (!adminAssigned) {
+                assignNewAdmin();
+            }
+        });
+
+        socket.on("adminCommand", ({ command, targetIds, message, value }) => {
+            if (socket.id === adminId) {
 
 
-    //socket.emit("message", `Current Count: ${counter}`);
-    // const interval = setInterval(() => {
-    //     counter++;
-    //     io.emit("message", `Current Count: ${counter}`);
-    // }, 5000);
+                switch (command) {
+                    case "kick":
+                        targetIds.forEach(id => removeUser(id));
+                        break;
 
-    //Remove User
-    // removeUser(id);
+                    case "refresh":
+                        if (targetIds.includes("all")) {
+                            io.emit("refresh");
+                            console.log("✅ All clients refreshed.");
+                        } else {
+                            targetIds.forEach(id => {
+                                const s = io.sockets.sockets.get(id);
+                                if (s) {
+                                    s.emit("refresh");
+                                    console.log(`✅ Refreshed client: ${users[id] || id}`);
+                                }
+                            });
+                        }
+                        break;
 
-    //Disconnect
-    socket.on("disconnect", () => {
-        delete users[socket.id];
-        io.emit("userList", users);
-        console.log("User Disconnected");
-    });
+                    case "setMaxConnections":
+                        const parsed = parseInt(value);
+                        if (!isNaN(parsed) && parsed > 0) {
+                            maxConnections = parsed;
+                            io.emit("serverMessage", `New Connection limit: ${maxConnections}`);
+                            console.log(`New maxConnections: ${maxConnections}`);
+                        } else {
+                            socket.emit("serverMessage", "❌ Invalid number for max connections.");
+                        }
+                        break;
+
+                    // default:
+                    //     socket.emit("serverMessage", `❌ Unknown admin command: ${command}`);
+                }
+            }
+        });
+
+        //Listen from a client and print
+        socket.on("message", (msg) => {
+            console.log(`${socket.userName} -> all: ${msg}`);
+            socket.broadcast.emit("message", {from: socket.userName ,msg});
+        });
+
+        // // Listen for a "chatMessage" event from this client
+        // socket.on("chatMessage", (msg) => {
+        //     console.log("Message form client: ", msg);
+        //     io.emit("chatMessage", msg);
+        // });
+
+        //Receive and send Private Message
+        socket.on("privateMessage", ({ to, message }) => {
+            io.to(to).emit("privateMessage", { from: socket.id, name: socket.userName, message });
+        });
+
+        // Disconnect
+        socket.on("disconnect", () => {
+            if (currentConnections > 0) currentConnections--;
+
+            console.log(`${users[socket.id]} Disconnected`);
+            delete users[socket.id];
+            io.emit("userList", users);
+
+            if (socket.id === adminId) {
+                adminAssigned = false;
+                adminId = null;
+                io.emit("serverMessage", "⚠️ Admin has left the server.");
+                assignNewAdmin();
+            }
+        });
+
+
+    }
 });
 
+function assignNewAdmin() {
+    const remainingUserIds = Object.keys(users);
+    if (remainingUserIds.length > 0) {
+        const newAdminId = remainingUserIds[0];
+        const newAdminSocket = io.sockets.sockets.get(newAdminId);
+
+        if (newAdminSocket) {
+            adminId = newAdminId;
+            adminAssigned = true;
+            newAdminSocket.isAdmin = true;
+            newAdminSocket.emit("serverMessage", "You are now the admin.");
+            newAdminSocket.emit("displayUserName", {
+                id: newAdminSocket.id,
+                name: newAdminSocket.userName,
+                isAdmin: true
+            });
+            console.log(`Admin to ${users[newAdminId]} (${newAdminId})`);
+        }
+    } else {
+        adminId = null;
+        adminAssigned = false;
+        console.log("Server is Empty!");
+    }
+}
+
+let rl2;
+function menuReadline() {
+    rl2 = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    showMainMenu();
+}
+
 function showMainMenu() {
-    rl.question("", handleMainMenu);
+    rl2.question("", handleMainMenu);
 }
 
 function handleMainMenu(option) {
@@ -86,7 +211,7 @@ function handleMainMenu(option) {
 
         case "close":
             console.log("Server closed!");
-            rl.close();
+            rl2.close();
             process.exit(0);
             break;
 
@@ -101,6 +226,11 @@ function handleMainMenu(option) {
             }
             break;
 
+        case "listactive":
+            const count = io.sockets.sockets.size;
+            console.log(`Number of Active Users: ${count}`);
+            break;
+
         case "send":
             return promptSendMessage();
 
@@ -108,10 +238,10 @@ function handleMainMenu(option) {
             return kickUser();
 
         case "refreshall":
-            return refreshAll(rl, io, showMainMenu);
+            return refreshAll(rl2, io, showMainMenu);
 
         case "refresh":
-            return refreshEach(rl, showMainMenu);
+            return refreshEach(rl2, showMainMenu);
     }
 
     showMainMenu();
@@ -119,17 +249,17 @@ function handleMainMenu(option) {
 
 function promptSendMessage() {
     // Collect IDs (all/socket IDs)
-    askForIds(rl, (ids) => {
+    askForIds(rl2, (ids) => {
         // If 'all' - send to all clients
         if (ids.length === 1 && ids[0] === 'all') {
-            rl.question("Message: ", (message) => {
+            rl2.question("Message: ", (message) => {
                 io.emit("serverMessage", `[Admin] ${message}`);
                 console.log("✅ Message sent to all clients.");
                 showMainMenu();
             });
         } else {
             // send to the specific socket IDs
-            rl.question("Message: ", (message) => {
+            rl2.question("Message: ", (message) => {
                 const validIds = ids.filter(id => users[id]);
 
                 if (validIds.length === 0) {
@@ -148,25 +278,23 @@ function promptSendMessage() {
 }
 
 function kickUser() {
-    askForIds(rl, (ids) => {
+    askForIds(rl2, (ids) => {
         if (ids.length === 1 && ids[0] === 'all') {
-            rl.question("Type 'CONFIRM' to confirm kicking all users: ", (confirmation) => {
+            rl2.question("Type 'CONFIRM' to confirm kicking all users: ", (confirmation) => {
                 if (confirmation === 'CONFIRM') {
                     io.sockets.sockets.forEach(socket => {
                         removeUser(socket.id);
-                        //console.log(`✅ Kicked user ${socket.id}`);
                     });
-                    console.log("✅ All users have been kicked.");
+                    console.log("All users have been kicked.");
+                } else {
+                    console.log("Confirmation failed. No users were kicked.");
                 }
-                //  else {
-                //     console.log("❌ Confirmation failed. No users were kicked.");
-                // }
                 showMainMenu();
             });
         } else {
             ids.forEach(id => {
                 removeUser(id);
-                console.log(`✅ Kicked user ${id}`);
+                console.log(`Kicked user ${id}`);
             });
             showMainMenu();
         }
@@ -174,20 +302,33 @@ function kickUser() {
 }
 
 function removeUser(userId) {
-    const us = io.sockets.sockets.get(userId);
-    if (us) {
-        us.disconnect();
+    if (users[userId]) {
+        const us = io.sockets.sockets.get(userId);
+        if (us) {
+            us.disconnect();
+        }
+    } else {
+        for (const id in users) {
+            if (users[id] === userId) {
+                const us = io.sockets.sockets.get(id);
+                if (us) {
+                    us.disconnect();
+                }
+            }
+        }
     }
     delete users[userId];
+    currentConnections--;
 }
 
 function showHelp() {
     console.log(`
 === Available Commands ===
-help   - Show this help menu
-list   - Show connected users
-send   - Send message to a user or all
-close  - Shut down the server
+help       - Show this help menu
+list       - Show connected users
+send       - Send message to a user or all
+close      - Shut down the server
+listactive - Show active users count
 ==========================
 `);
 }
@@ -197,6 +338,7 @@ function refreshAll(r1, io, callback) {
         if (answer.toLowerCase() === 'y') {
             io.emit("refresh");
             console.log("All Clients Refreshed!");
+            currentConnections = 0;
             if (callback) callback();
         }
     });
@@ -205,12 +347,11 @@ function refreshAll(r1, io, callback) {
 function refreshEach(r1, callback) {
     askForIds(r1, (ids) => {
         if (ids.length === 1 && ids[0] === 'all') {
-            rl.question("Type 'CONFIRM' to confirm: ", (confirmation) => {
+            rl2.question("Type 'CONFIRM' to confirm: ", (confirmation) => {
                 if (confirmation === 'CONFIRM') {
                     io.emit("refresh");
                     console.log("✅ Refresh sent to all clients.");
-                } else {
-                    console.log("❌ Confirmation failed. No refresh sent.");
+                    currentConnections = 0;
                 }
                 if (callback) callback();
             });
@@ -220,6 +361,7 @@ function refreshEach(r1, callback) {
                 if (socket) {
                     socket.emit("refresh");
                     console.log(`✅ Refresh sent to socket ID ${id}`);
+                    currentConnections--;
                 }
             });
 
@@ -234,8 +376,17 @@ function askForIds(r1, callback) {
             .split(',')
             .map(id => id.trim())
             .filter(id => id.length > 0);
+
+        let count = 0;
+
+        if (ids.length === 1 && ids[0].toLowerCase() === 'all') {
+            count = 3; // Special marker for 'all'
+        } else {
+            count = ids.length;
+        }
+
+        // callback(ids, count);
         callback(ids);
     });
 }
 
-showMainMenu();
