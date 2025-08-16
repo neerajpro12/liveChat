@@ -43,9 +43,9 @@ let currentConnections = 0;
 io.on("connection", (socket) => {
 
     if (currentConnections >= maxConnections) { // Close the connection if the limit is reached
-        socket.emit('error', 'Server is at full capacity. Please try again later.');
+        socket.emit('serverAlert', 'Server is at full capacity. Please try again later.');
         socket.disconnect();
-        console.log('Connection rejected: Server is at full capacity.');
+        // console.log('Connection rejected: Server is at full capacity.');
     } else {
         currentConnections++;
         console.log("User Connected");
@@ -96,21 +96,6 @@ io.on("connection", (socket) => {
                         targetIds.forEach(id => removeUser(id));
                         break;
 
-                    case "refresh":
-                        if (targetIds.includes("all")) {
-                            io.emit("refresh");
-                            console.log("✅ All clients refreshed.");
-                        } else {
-                            targetIds.forEach(id => {
-                                const s = io.sockets.sockets.get(id);
-                                if (s) {
-                                    s.emit("refresh");
-                                    console.log(`✅ Refreshed client: ${users[id] || id}`);
-                                }
-                            });
-                        }
-                        break;
-
                     case "setMaxConnections":
                         const parsed = parseInt(value);
                         if (!isNaN(parsed) && parsed > 0) {
@@ -122,23 +107,19 @@ io.on("connection", (socket) => {
                         }
                         break;
 
-                    // default:
-                    //     socket.emit("serverMessage", `❌ Unknown admin command: ${command}`);
+                    case "closeServer":
+                        io.emit("serverAlert", "Server is closed by the admin.");
+                        process.exit(0);
+                        break;
                 }
             }
         });
 
         //Listen from a client and print
         socket.on("message", (msg) => {
-            console.log(`${socket.userName} -> all: ${msg}`);
+            // console.log(`${socket.userName} -> all: ${msg}`);
             socket.broadcast.emit("message", {from: socket.userName ,msg});
         });
-
-        // // Listen for a "chatMessage" event from this client
-        // socket.on("chatMessage", (msg) => {
-        //     console.log("Message form client: ", msg);
-        //     io.emit("chatMessage", msg);
-        // });
 
         //Receive and send Private Message
         socket.on("privateMessage", ({ to, message }) => {
@@ -149,7 +130,7 @@ io.on("connection", (socket) => {
         socket.on("disconnect", () => {
             if (currentConnections > 0) currentConnections--;
 
-            console.log(`${users[socket.id]} Disconnected`);
+            // console.log(`${users[socket.id]} Disconnected`);
             delete users[socket.id];
             io.emit("userList", users);
 
@@ -226,7 +207,7 @@ function handleMainMenu(option) {
             }
             break;
 
-        case "listactive":
+        case "listcount":
             const count = io.sockets.sockets.size;
             console.log(`Number of Active Users: ${count}`);
             break;
