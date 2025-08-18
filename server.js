@@ -12,28 +12,29 @@ app.get("/", (req, res) => {
 
 let adminAssigned = false;
 let adminId = null;
-let maxConnections = 3;
+let maxConnections = 2;
 
 const readline = require("readline");
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
+// const rl = readline.createInterface({
+//     input: process.stdin,
+//     output: process.stdout
+// });
 
 setTimeout(() => {
     server.listen(3000, '0.0.0.0', () => {
         console.log("Server running on PORT 3000");
     });
-}, 5000);
+}, 0);
 
-rl.question("Set max connections: ", (input) => {
-    maxConnections = input.trim() === "" ? 3 : parseInt(input);
-    console.log(`Max connections set to: ${maxConnections}`);
-    rl.close();
-    menuReadline();
-});
+// rl.question("Set max connections: ", (input) => {
+//     maxConnections = input.trim() === "" ? 3 : parseInt(input);
+//     console.log(`Max connections set to: ${maxConnections}`);
+//     rl.close();
+//     menuReadline();
+// });
 
-
+let rl2;
+menuReadline();
 
 const users = {};
 // let userNameGlobal = "";
@@ -47,20 +48,24 @@ io.on("connection", (socket) => {
         socket.disconnect();
         // console.log('Connection rejected: Server is at full capacity.');
     } else {
-        currentConnections++;
-        console.log("User Connected");
 
         //Username, Userlist and Welcome
         socket.on("setUsername", (username) => {
+
+            currentConnections++;
             socket.userName = username;
             // if (!username.trim()) {
             //     return socket.emit("error", "Username cannot be empty.");
             // }
 
             if (Object.values(users).includes(username)) {
-                return socket.emit("error", "Username already taken.");
+                socket.emit("serverAlert", "Username already taken. Refresh to try again.");
+                return socket.disconnect();
             }
 
+
+            // console.log(`Active: ${currentConnections}`);
+            console.log("User Connected");
             socket.isAdmin = false;
             users[socket.id] = username;
 
@@ -109,7 +114,10 @@ io.on("connection", (socket) => {
 
                     case "closeServer":
                         io.emit("serverAlert", "Server is closed by the admin.");
-                        process.exit(0);
+                        io.emit("serverMessage", `Server is closed by the admin.`);
+                        setTimeout(() => {
+                            process.exit(0);
+                        }, 500);
                         break;
                 }
             }
@@ -118,7 +126,7 @@ io.on("connection", (socket) => {
         //Listen from a client and print
         socket.on("message", (msg) => {
             // console.log(`${socket.userName} -> all: ${msg}`);
-            socket.broadcast.emit("message", {from: socket.userName ,msg});
+            socket.broadcast.emit("message", { from: socket.userName, msg });
         });
 
         //Receive and send Private Message
@@ -171,7 +179,6 @@ function assignNewAdmin() {
     }
 }
 
-let rl2;
 function menuReadline() {
     rl2 = readline.createInterface({
         input: process.stdin,
@@ -294,6 +301,7 @@ function removeUser(userId) {
                 const us = io.sockets.sockets.get(id);
                 if (us) {
                     us.disconnect();
+                    io.emit("serverMessage", `${userId} was removed from this chat.`);
                 }
             }
         }
