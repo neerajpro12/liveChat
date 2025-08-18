@@ -14,11 +14,7 @@ let adminAssigned = false;
 let adminId = null;
 let maxConnections = 2;
 
-const readline = require("readline");
-// const rl = readline.createInterface({
-//     input: process.stdin,
-//     output: process.stdout
-// });
+// const readline = require("readline");
 
 setTimeout(() => {
     server.listen(3000, '0.0.0.0', () => {
@@ -26,18 +22,10 @@ setTimeout(() => {
     });
 }, 0);
 
-// rl.question("Set max connections: ", (input) => {
-//     maxConnections = input.trim() === "" ? 3 : parseInt(input);
-//     console.log(`Max connections set to: ${maxConnections}`);
-//     rl.close();
-//     menuReadline();
-// });
-
-let rl2;
-menuReadline();
+// let rl2;
+// menuReadline();
 
 const users = {};
-// let userNameGlobal = "";
 let currentConnections = 0;
 
 //Listen for socket connection
@@ -65,7 +53,7 @@ io.on("connection", (socket) => {
 
 
             // console.log(`Active: ${currentConnections}`);
-            console.log("User Connected");
+            // console.log("User Connected");
             socket.isAdmin = false;
             users[socket.id] = username;
 
@@ -106,7 +94,7 @@ io.on("connection", (socket) => {
                         if (!isNaN(parsed) && parsed > 0) {
                             maxConnections = parsed;
                             io.emit("serverMessage", `New Connection limit: ${maxConnections}`);
-                            console.log(`New maxConnections: ${maxConnections}`);
+                            // console.log(`New maxConnections: ${maxConnections}`);
                         } else {
                             socket.emit("serverMessage", "❌ Invalid number for max connections.");
                         }
@@ -137,7 +125,6 @@ io.on("connection", (socket) => {
         // Disconnect
         socket.on("disconnect", () => {
             if (currentConnections > 0) currentConnections--;
-
             // console.log(`${users[socket.id]} Disconnected`);
             delete users[socket.id];
             io.emit("userList", users);
@@ -179,116 +166,6 @@ function assignNewAdmin() {
     }
 }
 
-function menuReadline() {
-    rl2 = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-    showMainMenu();
-}
-
-function showMainMenu() {
-    rl2.question("", handleMainMenu);
-}
-
-function handleMainMenu(option) {
-    switch (option.trim().toLowerCase()) {
-        case "help":
-            showHelp();
-            break;
-
-        case "close":
-            console.log("Server closed!");
-            rl2.close();
-            process.exit(0);
-            break;
-
-        case "list":
-            if (Object.keys(users).length === 0) {
-                console.log("⚠️ No users connected.");
-            } else {
-                console.log("👥 Connected Users:");
-                for (const [id, name] of Object.entries(users)) {
-                    console.log(`- ${name} (${id})`);
-                }
-            }
-            break;
-
-        case "listcount":
-            const count = io.sockets.sockets.size;
-            console.log(`Number of Active Users: ${count}`);
-            break;
-
-        case "send":
-            return promptSendMessage();
-
-        case "kick":
-            return kickUser();
-
-        case "refreshall":
-            return refreshAll(rl2, io, showMainMenu);
-
-        case "refresh":
-            return refreshEach(rl2, showMainMenu);
-    }
-
-    showMainMenu();
-}
-
-function promptSendMessage() {
-    // Collect IDs (all/socket IDs)
-    askForIds(rl2, (ids) => {
-        // If 'all' - send to all clients
-        if (ids.length === 1 && ids[0] === 'all') {
-            rl2.question("Message: ", (message) => {
-                io.emit("serverMessage", `[Admin] ${message}`);
-                console.log("✅ Message sent to all clients.");
-                showMainMenu();
-            });
-        } else {
-            // send to the specific socket IDs
-            rl2.question("Message: ", (message) => {
-                const validIds = ids.filter(id => users[id]);
-
-                if (validIds.length === 0) {
-                    console.log("❌ No valid socket IDs found.");
-                } else {
-                    validIds.forEach(id => {
-                        io.to(id).emit("serverMessage", `[Admin] ${message}`);
-                        console.log(`✅ Message sent to ${users[id]} (${id})`);
-                    });
-                }
-
-                showMainMenu();
-            });
-        }
-    });
-}
-
-function kickUser() {
-    askForIds(rl2, (ids) => {
-        if (ids.length === 1 && ids[0] === 'all') {
-            rl2.question("Type 'CONFIRM' to confirm kicking all users: ", (confirmation) => {
-                if (confirmation === 'CONFIRM') {
-                    io.sockets.sockets.forEach(socket => {
-                        removeUser(socket.id);
-                    });
-                    console.log("All users have been kicked.");
-                } else {
-                    console.log("Confirmation failed. No users were kicked.");
-                }
-                showMainMenu();
-            });
-        } else {
-            ids.forEach(id => {
-                removeUser(id);
-                console.log(`Kicked user ${id}`);
-            });
-            showMainMenu();
-        }
-    });
-}
-
 function removeUser(userId) {
     if (users[userId]) {
         const us = io.sockets.sockets.get(userId);
@@ -310,72 +187,185 @@ function removeUser(userId) {
     currentConnections--;
 }
 
-function showHelp() {
-    console.log(`
-=== Available Commands ===
-help       - Show this help menu
-list       - Show connected users
-send       - Send message to a user or all
-close      - Shut down the server
-listactive - Show active users count
-==========================
-`);
-}
+//// Uncomment all code below this to input commands from terminal. Also uncomment required console.log statements.
+//// Also uncomment const readline(line 17), let rl2;(line 25) and menuReadline();(line 26)
 
-function refreshAll(r1, io, callback) {
-    r1.question("Are you sure (y/n): ", (answer) => {
-        if (answer.toLowerCase() === 'y') {
-            io.emit("refresh");
-            console.log("All Clients Refreshed!");
-            currentConnections = 0;
-            if (callback) callback();
-        }
-    });
-}
+// function menuReadline() {
+//     rl2 = readline.createInterface({
+//         input: process.stdin,
+//         output: process.stdout
+//     });
+//     showMainMenu();
+// }
 
-function refreshEach(r1, callback) {
-    askForIds(r1, (ids) => {
-        if (ids.length === 1 && ids[0] === 'all') {
-            rl2.question("Type 'CONFIRM' to confirm: ", (confirmation) => {
-                if (confirmation === 'CONFIRM') {
-                    io.emit("refresh");
-                    console.log("✅ Refresh sent to all clients.");
-                    currentConnections = 0;
-                }
-                if (callback) callback();
-            });
-        } else {
-            ids.forEach(id => {
-                const socket = io.sockets.sockets.get(id);
-                if (socket) {
-                    socket.emit("refresh");
-                    console.log(`✅ Refresh sent to socket ID ${id}`);
-                    currentConnections--;
-                }
-            });
+// function showMainMenu() {
+//     rl2.question("", handleMainMenu);
+// }
 
-            if (callback) callback();
-        }
-    });
-}
+// function handleMainMenu(option) {
+//     switch (option.trim().toLowerCase()) {
+//         case "help":
+//             showHelp();
+//             break;
 
-function askForIds(r1, callback) {
-    r1.question("Enter id(s) [use , to separate ids]: ", (answer) => {
-        const ids = answer
-            .split(',')
-            .map(id => id.trim())
-            .filter(id => id.length > 0);
+//         case "close":
+//             console.log("Server closed!");
+//             rl2.close();
+//             process.exit(0);
+//             break;
 
-        let count = 0;
+//         case "list":
+//             if (Object.keys(users).length === 0) {
+//                 console.log("⚠️ No users connected.");
+//             } else {
+//                 console.log("👥 Connected Users:");
+//                 for (const [id, name] of Object.entries(users)) {
+//                     console.log(`- ${name} (${id})`);
+//                 }
+//             }
+//             break;
 
-        if (ids.length === 1 && ids[0].toLowerCase() === 'all') {
-            count = 3; // Special marker for 'all'
-        } else {
-            count = ids.length;
-        }
+//         case "listcount":
+//             const count = io.sockets.sockets.size;
+//             console.log(`Number of Active Users: ${count}`);
+//             break;
 
-        // callback(ids, count);
-        callback(ids);
-    });
-}
+//         case "send":
+//             return promptSendMessage();
+
+//         case "kick":
+//             return kickUser();
+
+//         case "refreshall":
+//             return refreshAll(rl2, io, showMainMenu);
+
+//         case "refresh":
+//             return refreshEach(rl2, showMainMenu);
+//     }
+
+//     showMainMenu();
+// }
+
+// function promptSendMessage() {
+//     // Collect IDs (all/socket IDs)
+//     askForIds(rl2, (ids) => {
+//         // If 'all' - send to all clients
+//         if (ids.length === 1 && ids[0] === 'all') {
+//             rl2.question("Message: ", (message) => {
+//                 io.emit("serverMessage", `[Admin] ${message}`);
+//                 console.log("✅ Message sent to all clients.");
+//                 showMainMenu();
+//             });
+//         } else {
+//             // send to the specific socket IDs
+//             rl2.question("Message: ", (message) => {
+//                 const validIds = ids.filter(id => users[id]);
+
+//                 if (validIds.length === 0) {
+//                     console.log("❌ No valid socket IDs found.");
+//                 } else {
+//                     validIds.forEach(id => {
+//                         io.to(id).emit("serverMessage", `[Admin] ${message}`);
+//                         console.log(`✅ Message sent to ${users[id]} (${id})`);
+//                     });
+//                 }
+
+//                 showMainMenu();
+//             });
+//         }
+//     });
+// }
+
+// function kickUser() {
+//     askForIds(rl2, (ids) => {
+//         if (ids.length === 1 && ids[0] === 'all') {
+//             rl2.question("Type 'CONFIRM' to confirm kicking all users: ", (confirmation) => {
+//                 if (confirmation === 'CONFIRM') {
+//                     io.sockets.sockets.forEach(socket => {
+//                         removeUser(socket.id);
+//                     });
+//                     console.log("All users have been kicked.");
+//                 } else {
+//                     console.log("Confirmation failed. No users were kicked.");
+//                 }
+//                 showMainMenu();
+//             });
+//         } else {
+//             ids.forEach(id => {
+//                 removeUser(id);
+//                 console.log(`Kicked user ${id}`);
+//             });
+//             showMainMenu();
+//         }
+//     });
+// }
+
+// function showHelp() {
+//     console.log(`
+// === Available Commands ===
+// help       - Show this help menu
+// list       - Show connected users
+// send       - Send message to a user or all
+// close      - Shut down the server
+// listactive - Show active users count
+// ==========================
+// `);
+// }
+
+// function refreshAll(r1, io, callback) {
+//     r1.question("Are you sure (y/n): ", (answer) => {
+//         if (answer.toLowerCase() === 'y') {
+//             io.emit("refresh");
+//             console.log("All Clients Refreshed!");
+//             currentConnections = 0;
+//             if (callback) callback();
+//         }
+//     });
+// }
+
+// function refreshEach(r1, callback) {
+//     askForIds(r1, (ids) => {
+//         if (ids.length === 1 && ids[0] === 'all') {
+//             rl2.question("Type 'CONFIRM' to confirm: ", (confirmation) => {
+//                 if (confirmation === 'CONFIRM') {
+//                     io.emit("refresh");
+//                     console.log("✅ Refresh sent to all clients.");
+//                     currentConnections = 0;
+//                 }
+//                 if (callback) callback();
+//             });
+//         } else {
+//             ids.forEach(id => {
+//                 const socket = io.sockets.sockets.get(id);
+//                 if (socket) {
+//                     socket.emit("refresh");
+//                     console.log(`✅ Refresh sent to socket ID ${id}`);
+//                     currentConnections--;
+//                 }
+//             });
+
+//             if (callback) callback();
+//         }
+//     });
+// }
+
+// function askForIds(r1, callback) {
+//     r1.question("Enter id(s) [use , to separate ids]: ", (answer) => {
+//         const ids = answer
+//             .split(',')
+//             .map(id => id.trim())
+//             .filter(id => id.length > 0);
+
+//         let count = 0;
+
+//         if (ids.length === 1 && ids[0].toLowerCase() === 'all') {
+//             count = 3; // Special marker for 'all'
+//         } else {
+//             count = ids.length;
+//         }
+
+//         // callback(ids, count);
+//         callback(ids);
+//     });
+// }
 
