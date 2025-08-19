@@ -18,11 +18,10 @@ let maxConnections = 2;
 // const readline = require("readline");
 
 const PORT = process.env.PORT || 3000;
-setTimeout(() => {
-    server.listen(PORT, () => {
-        console.log("Server running on PORT 3000");
-    });
-}, 0);
+server.listen(PORT, () => {
+    console.log(`Server running on PORT ${PORT}`);
+});
+
 
 // let rl2;
 // menuReadline();
