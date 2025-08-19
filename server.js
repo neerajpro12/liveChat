@@ -1,14 +1,15 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require('path');
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server); //attach socket.io to http server
+const io = new Server(server, {
+    cors: {origin: '*'}
+}); //attach socket.io to http server
 
 //Serve a sample html file later
-app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/index.html");
-})
+app.use(express.static(path.join(__dirname, 'public')));
 
 let adminAssigned = false;
 let adminId = null;
@@ -16,8 +17,9 @@ let maxConnections = 2;
 
 // const readline = require("readline");
 
+const PORT = process.env.PORT || 3000;
 setTimeout(() => {
-    server.listen(3000, '0.0.0.0', () => {
+    server.listen(PORT, () => {
         console.log("Server running on PORT 3000");
     });
 }, 0);
@@ -157,12 +159,12 @@ function assignNewAdmin() {
                 name: newAdminSocket.userName,
                 isAdmin: true
             });
-            console.log(`Admin to ${users[newAdminId]} (${newAdminId})`);
+            // console.log(`Admin to ${users[newAdminId]} (${newAdminId})`);
         }
     } else {
         adminId = null;
         adminAssigned = false;
-        console.log("Server is Empty!");
+        // console.log("Server is Empty!");
     }
 }
 
