@@ -411,7 +411,8 @@
                         }
                         socket.emit("adminCommand", {
                             command: "kick",
-                            targetIds: args.includes("all") ? ["all"] : args
+                            targetIds: args.includes("all") ? ["all"] : args,
+                            roomname: selfRoom
                         });
                         break;
 

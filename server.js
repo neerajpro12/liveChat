@@ -48,7 +48,7 @@ io.on("connection", (socket) => {
         const room = io.sockets.adapter.rooms.get(roomname);
         const numClients = room ? room.size : 0;
 
-        if (numClients >= roomStat[roomname][limit]) {
+        if (numClients >= roomStat[roomname]) {
             callback({ success: false, message: "Room is full" });
             socket.disconnect();
             return;
@@ -64,7 +64,7 @@ io.on("connection", (socket) => {
 
         if (!Object.keys(adminList).includes(roomname)) {
             adminList[roomname] = socket.id;
-            roomStat[roomname].limit = 2;
+            // roomStat[roomname].limit = 2;
             console.log(roomStat);
             socket.emit("serverMessage", "You are the admin for this chat.");
         }
@@ -126,40 +126,40 @@ io.on("connection", (socket) => {
         // }
     });
 
-    // socket.on("adminCommand", ({ command, targetIds, message, value, roomname }) => {
-    //     if (adminList[areaName] === socket.id) {
+    socket.on("adminCommand", ({ command, targetIds, message, value, roomname }) => {
+        if (adminList[areaName] === socket.id) {
 
-    //         switch (command) {
+            switch (command) {
 
-    //             case "test":
-    //                 console.log(`Command from Room ${roomname}`);
-    //                 break;
+                case "test":
+                    console.log(`Command from Room ${roomname}`);
+                    break;
 
-    //             case "kick":
-    //                 targetIds.forEach(id => removeUser({id, roomname}));
-    //                 break;
+                case "kick":
+                    targetIds.forEach(id => removeUser({ userId: id, roomname }));
+                    break;
 
-    //             case "setMaxConnections":
-    //                 const parsed = parseInt(value);
-    //                 if (!isNaN(parsed) && parsed > 0) {
-    //                     roomStat[roomname][limit] = parsed;
-    //                     io.emit("serverMessage", `New Connection limit: ${parsed}`);
-    //                     // console.log(`New maxConnections: ${maxConnections}`);
-    //                 } else {
-    //                     socket.emit("serverMessage", "❌ Invalid number for max connections.");
-    //                 }
-    //                 break;
+                case "setMaxConnections":
+                    const parsed = parseInt(value);
+                    if (!isNaN(parsed) && parsed > 0) {
+                        // roomStat[roomname][limit] = parsed;
+                        io.emit("serverMessage", `New Connection limit: ${parsed}`);
+                        // console.log(`New maxConnections: ${maxConnections}`);
+                    } else {
+                        socket.emit("serverMessage", "❌ Invalid number for max connections.");
+                    }
+                    break;
 
-    //             case "closeServer":
-    //                 io.emit("serverAlert", "Server is closed by the admin.");
-    //                 io.emit("serverMessage", `Server is closed by the admin.`);
-    //                 setTimeout(() => {
-    //                     process.exit(0);
-    //                 }, 500);
-    //                 break;
-    //         }
-    //     }
-    // });
+                case "closeServer":
+                    io.emit("serverAlert", "Server is closed by the admin.");
+                    io.emit("serverMessage", `Server is closed by the admin.`);
+                    setTimeout(() => {
+                        process.exit(0);
+                    }, 500);
+                    break;
+            }
+        }
+    });
 
     //Listen from a client and print
     socket.on("message", ({ msg, roomname }) => {
@@ -228,6 +228,25 @@ function assignAdmin(areaName) {
         });
     }
 
+}
+
+function removeUser({ userId, roomname }) {
+    // console.log(roomname);
+    for (const id in users[roomname]) {
+        // console.log(id);
+        if (users[roomname][id] === userId) {
+            const us = io.sockets.sockets.get(id);
+            // console.log(us);
+            if (us) {
+                setTimeout(() => {
+                    us.disconnect();
+                },500);
+                io.to(roomname).emit("serverMessage", `${userId} was removed from this chat.`);
+            }
+        }
+    }
+
+    // delete users[roomname][userId];
 }
 
 // function assignNewAdmin() {
