@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.io Test</title>
+    <style>
+        /* Font stack that works offline (system fonts) */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f9f9fb;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        input,
+        select,
+        button {
+            font-family: inherit;
+            font-size: 1rem;
+            padding: 8px 10px;
+            /* margin: 4px; */
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            outline: none;
+            transition: border 0.2s ease;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #007bff;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #chat {
+            max-width: 680px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+        }
+
+        #messages {
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #fdfdfd;
+        }
+
+        .my-message {
+            max-width: 75%;
+            background-color: #92ffa4;
+            float: right;
+            padding: 3px;
+            border-radius: 16px;
+            clear: both;
+            display: block;
+            margin: 6px 0px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            gap: 3px;
+        }
+
+        .my-name {
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-align: right;
+            padding-top: 5px;
+            padding-right: 8px;
+            padding-bottom: 0px;
+            margin-left: 8px;
+            margin-right: 8px;
+            /* border-bottom: 1px solid #818181; */
+        }
+
+        .my-content {
+            font-size: 1rem;
+            border-radius: 8px;
+            padding: 1px 8px 8px;
+            word-wrap: break-word;
+        }
+
+        .other-message {
+            max-width: 75%;
+            background-color: #e6e6e6;
+            float: left;
+            text-decoration-color: #000;
+            padding: 3px;
+            border-radius: 16px;
+            clear: both;
+            display: block;
+            margin: 6px 0px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            gap: 3px;
+        }
+
+        .other-name {
+            color: #2a7ae2;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-align: left;
+            padding-top: 5px;
+            padding-left: 0px;
+            padding-bottom: 3px;
+            margin-right: 8px;
+            margin-left: 8px;
+        }
+
+        .other-content {
+            background-color: #e6e6e6;
+            text-decoration-color: #000;
+            padding: 1px 8px 8px;
+            border-radius: 16px;
+            clear: both;
+            display: block;
+            /* margin: 6px 0px; */
+            gap: 3px;
+            word-wrap: break-word;
+            line-height: 1.2;
+        }
+
+        .server-message {
+            text-align: center;
+            background-color: #e0f0ff;
+            color: #004080;
+            margin: 10px auto;
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 80%;
+            font-style: italic;
+            font-size: 0.95rem;
+            clear: both;
+        }
+
+        #divButton {
+            max-width: 680px;
+            gap: 6px;
+        }
+
+
+        #displayUserName {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #displayRoomName {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* Message input area */
+        #chat-controls {
+            max-width: 680px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        #recipientSelect {
+            max-width: 80px;
+        }
+
+        #accord {
+            width: 100%;
+            max-width: 720px;
+            margin: 10px auto;
+        }
+
+        .accordion-header {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            padding: 12px 20px;
+            border: none;
+            outline: none;
+            text-align: left;
+            width: 100%;
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background-color: #f1f1f1;
+            padding: 0 20px;
+        }
+
+        .accordion-content p {
+            margin: 12px 0;
+        }
+
+        @media (max-width: 500px) {
+            #chat {
+                padding: 10px;
+            }
+
+            #divButton {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                /* align-items: center; */
+            }
+
+            #recipientSelect {
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <p id="displayUserName"></p>
+    <p id="displayRoomName"></p>
+
+    <!-- <h1>Open the Console</h1> -->
+
+    <!-- Chat UI -->
+    <div id="chat">
+        <div id="messages"></div>
+        <div id="chat-controls">
+            <input type="text" id="messageInput" placeholder="Type your message or /clear to clear chat"
+                style="flex: 1;">
+            <div id="divButton">
+                <select id="recipientSelect">
+                </select>
+                <button id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="accordion-item" id="accord">
+        <button class="accordion-header">Click to see Instructions</button>
+        <div class="accordion-content">
+            <p><b>/clear</b> - this will clear all messages from chat.</p>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io({
+            reconnection: false,              // enable reconnection
+            // reconnectionAttempts: 3,         
+            // reconnectionDelay: 10000         // 10 seconds
+        });
+
+        //Get room name
+        const room = window.location.pathname.split("/").pop();
+        socket.emit("joinRoom", room, (response) => {
+            if (!response.success) {
+                alert(response.message);
+                window.location.href = "/";
+            } else {
+                console.log(response.message);
+            }
+        });
+
+        let selfId = "";
+        let selfName = "";
+        let selfRoom = "";
+
+        //Username
+        function setupUsername() {
+            let tempUsername = prompt("Enter your Username.");
+            const username = (!tempUsername || !tempUsername.trim() || tempUsername === "") ? randomWord() : tempUsername;
+            tempUsername = null;
+            socket.emit("setUsername", {username, roomname: room});
+            // console.log("Connected to server");
+        }
+        setupUsername();
+
+        socket.on("displayUserName", ({ id, name, isAdmin, displayRoom }) => {
+            selfRoom = displayRoom;
+            console.log(`Details:\nId: ${id}\nName: ${name}\nAdmin: ${isAdmin}`);
+            selfId = id;
+            selfName = name;
+            window.isAdmin = isAdmin; // Track admin status globally
+            // document.getElementById("displayUserName").textContent = `Logged in as: ${name}`;
+            document.getElementById("displayUserName").textContent = `Welcome ${name}${isAdmin ? " (Admin)" : ""}`;
+            document.getElementById("displayRoomName").textContent = `Room Name: ${selfRoom}`;
+            const instructions = `<p><b>/clear</b> - this will clear all messages from chat.<br><br>
+                As you are admin you can use following commands:<br>
+                1. <b>$kick &ltusername(s)&gt</b> - remove the user from chat. Separate multiple usernames using space.<br>
+                2. <b>$setmax &ltnumber&gt</b> - change the number of max participants in chat. (Default: 2)<br>
+                3. <b>$closeserver</b> - close the chat. This will remove all participants including you.\n<br><br>
+                Examples:<br>1. <b>$kick aa</b> or <b>$kick aa bb</b><br>2. <b>$setmax 4</b></p>`;
+            if (window.isAdmin) {
+                document.querySelector(".accordion-content").innerHTML = `${instructions}`;
+            }
+        });
+
+        //Receive List of users
+        socket.on("userList", (users) => {
+            const select = document.getElementById("recipientSelect");
+            select.innerHTML = ''; // Clear old entries
+            const option = document.createElement("option");
+            option.value = "toAll";
+            option.textContent = "All";
+            select.appendChild(option);
+
+            for (const [id, username] of Object.entries(users)) {
+                if (id !== selfId) {
+                    const option = document.createElement("option");
+                    option.value = id;
+                    option.textContent = username;
+                    select.appendChild(option);
+                }
+            }
+        });
+
+        socket.on("serverMessage", (msg) => {
+            console.log("Server: ", msg);
+            const div = document.createElement("div");
+            div.textContent = `${msg}`;
+            // div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            div.classList.add("server-message");
+            document.getElementById("messages").appendChild(div);
+            div.scrollIntoView({ behavior: "smooth" });
+        });
+
+        socket.on("serverAlert", (msg) => {
+            alert(msg);
+        });
+
+        socket.on("privateMessage", ({ from, name, message }) => {
+            console.log(`${from}, ${name}, ${message}`);
+            fromMessageBubble("private", name, message)
+        });
+
+        socket.on("message", ({ from, msg }) => {
+            console.log(msg);
+            fromMessageBubble("", from, msg)
+        });
+
+        socket.on("refresh", () => {
+            console.log("Refreshing command received - reoading page!");
+            location.reload();
+        })
+
+        socket.on("connect_error", () => {
+            console.warn("Server is unreachable.");
+        });
+
+        socket.on("disconnect", () => {
+            console.warn("Connection lost to the server.");
+            alert("Connection lost to the server.");
+        });
+
+        document.getElementById("sendBtn").addEventListener("click", () => {
+            const msgInput = document.getElementById("messageInput");
+            const msg = msgInput.value.trim();
+            const select = document.getElementById("recipientSelect");
+            // const to = select.value;
+            const selectedOpt = select.options[select.selectedIndex];
+            const toName = selectedOpt.textContent;
+            const to = selectedOpt.value;
+
+            if (msg === "/clear") {
+                messages.innerHTML = '';
+                msgInput.value = "";
+                return;
+            }
+
+            if (!msg || to === "") {
+                alert("No users Selected or present");
+                msgInput.value = "";
+                return;
+            }
+
+            if (!msg.startsWith("$") && to === "toAll") {
+                socket.emit("message", {msg, roomname: room});
+                addMessageBubble("", msg, "my-message");
+                msgInput.value = "";
+                return;
+            }
+
+            // Admin-only command input (starts with $)
+            if (msg.startsWith("$") && window.isAdmin) {
+                const parts = msg.slice(1).trim().split(" ");
+                const command = parts[0].toLowerCase();
+                const args = parts.slice(1);
+
+                switch (command) {
+
+                    case "test":
+                        socket.emit("adminCommand", {
+                            command: "test",
+                            roomname: selfRoom
+                        })
+                        break;
+
+                    case "kick":
+                        if (args.length === 0) {
+                            alert("Usage: $kick <socketId or all>");
+                            break;
+                        }
+                        socket.emit("adminCommand", {
+                            command: "kick",
+                            targetIds: args.includes("all") ? ["all"] : args
+                        });
+                        break;
+
+                    case "setmax":
+                        const newLimit = parseInt(args[0]);
+                        if (!isNaN(newLimit)) {
+                            socket.emit("adminCommand", {
+                                command: "setMaxConnections",
+                                value: newLimit,
+                                roomname: selfRoom
+                            });
+                        } else {
+                            alert("Usage: $setmax <number>");
+                        }
+                        break;
+
+                    case "closeserver":
+                        socket.emit("adminCommand", {
+                            command: "closeServer"
+                        });
+                        break;
+
+                    default:
+                        alert("Unknown admin command.");
+                }
+                // addMessageBubble(msg, "my-message");
+
+            } else if (msg.startsWith("$") && !window.isAdmin) {
+                alert("Only admins can execute commands.");
+            } else {
+                socket.emit("privateMessage", { to, message: msg, roomname: room });
+                addMessageBubble(toName, msg, "my-message")
+            }
+
+            msgInput.value = "";
+        });
+
+        document.getElementById("messageInput").addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); //Prevent New Line
+                document.getElementById("sendBtn").click();
+            }
+        });
+
+        function addMessageBubble(to, msg, msgclass) {
+            let temp = (to === "") ? "" : `${to}`
+            const div = document.createElement("div");
+
+            const div_a = document.createElement("div");
+            div_a.textContent = temp;
+            div_a.classList.add("my-name");
+
+            const div_b = document.createElement("div");
+            div_b.classList.add("my-content");
+            div_b.textContent = msg;
+
+            div.appendChild(div_a);
+            div.appendChild(div_b);
+            div.classList.add(msgclass);
+            document.getElementById("messages").appendChild(div);
+            div.scrollIntoView({ behavior: "smooth" });
+        }
+
+        function fromMessageBubble(status, name, message) {
+            let temp = (status === "") ? `${name}` : `[Private] ${name}`
+            const div = document.createElement("div");
+
+            const div_a = document.createElement("div");
+            div_a.textContent = temp;
+            div_a.classList.add("other-name");
+
+            const div_b = document.createElement("div");
+            div_b.classList.add("other-content");
+            div_b.textContent = message;
+
+            div.appendChild(div_a);
+            div.appendChild(div_b);
+            div.classList.add("other-message");
+            document.getElementById("messages").appendChild(div);
+            div.scrollIntoView({ behavior: "smooth" });
+        }
+
+        function randomWord(length = 5) {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        const header = document.querySelector(".accordion-header");
+        const content = document.querySelector(".accordion-content");
+        header.addEventListener('click', () => {
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        })
+    </script>
+</body>
+
+</html>
