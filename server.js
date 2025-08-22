@@ -47,7 +47,7 @@ io.on("connection", (socket) => {
         if (numClients >= inRoom[roomname]) {
             callback({ success: false, message: "Room is full" });
             users[roomname][socket.id] = "temp";
-            console.log(users);
+            // console.log(users);
             socket.disconnect();
             return;
         }
@@ -132,14 +132,12 @@ io.on("connection", (socket) => {
 
     //Receive and send Private Message
     socket.on("privateMessage", ({ to, message, roomname }) => {
-        console.log(to);
+        // console.log(to);
         io.to(to).emit("privateMessage", { from: socket.id, name: socket.userName, message });
     });
 
     // Disconnect
     socket.on("disconnect", () => {
-        console.log("Socket to disconnect:", socket.id);
-        console.log("Users: ", users);
         if (users[socket.areaName] && users[socket.areaName][socket.id]) {
             io.to(socket.areaName).emit("serverMessage", `${JSON.stringify(users[socket.areaName][socket.id])} left.`)
             delete users[socket.areaName][socket.id];

@@ -35,14 +35,9 @@
             cursor: pointer;
         }
 
-        /* .dark-mode button {
-            background-color: #4e4e4e;
-        } */
-
         .main {
             border: 1px solid #ffffff;
             padding: 20px;
-            width: 100%;
             max-width: 400px;
             margin: 40px auto;
             border-radius: 16px;
@@ -58,6 +53,10 @@
 
         h2 {
             margin: 20px auto 30px;
+        }
+
+        .roomImput {
+            max-width: 214px;
         }
 
         .inpBtn {
@@ -91,6 +90,12 @@
         .dark-mode h2,
         .dark-mode p {
             color: #e0e0e0;
+        }
+
+        @media (max-width: 400px) {
+            .roomInput {
+                max-width: 160px;
+            }
         }
     </style>
 </head>
