@@ -3,15 +3,15 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socket.io Test</title>
+    <title>Chat App</title>
     <style>
-        /* Font stack that works offline (system fonts) */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background-color: #f9f9fb;
             color: #333;
             margin: 0;
             padding: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         input,
@@ -20,7 +20,6 @@
             font-family: inherit;
             font-size: 1rem;
             padding: 8px 10px;
-            /* margin: 4px; */
             border-radius: 6px;
             border: 1px solid #ccc;
             outline: none;
@@ -43,13 +42,14 @@
             background-color: #0056b3;
         }
 
-        #chat {
+        .chat {
             max-width: 680px;
             margin: 30px auto;
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             padding: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         #messages {
@@ -60,7 +60,15 @@
             border-radius: 8px;
             padding: 10px;
             background-color: #fdfdfd;
+            color: #333;
         }
+
+        .dark-mode #messages {
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+            border-color: #444;
+        }
+
 
         .my-message {
             max-width: 75%;
@@ -80,11 +88,10 @@
             font-weight: bold;
             text-align: right;
             padding-top: 5px;
-            padding-right: 8px;
+            padding-right: 0px;
             padding-bottom: 0px;
             margin-left: 8px;
             margin-right: 8px;
-            /* border-bottom: 1px solid #818181; */
         }
 
         .my-content {
@@ -98,7 +105,6 @@
             max-width: 75%;
             background-color: #e6e6e6;
             float: left;
-            text-decoration-color: #000;
             padding: 3px;
             border-radius: 16px;
             clear: both;
@@ -118,16 +124,24 @@
             padding-bottom: 3px;
             margin-right: 8px;
             margin-left: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .private {
+            margin-left: 6px;
+            background-color: #d1c4e9;
+            color: #311b92;
+            padding: 2px 4px;
+            border-radius: 3px;
         }
 
         .other-content {
-            background-color: #e6e6e6;
-            text-decoration-color: #000;
+            /* background-color: #e6e6e6; */
             padding: 1px 8px 8px;
             border-radius: 16px;
             clear: both;
             display: block;
-            /* margin: 6px 0px; */
             gap: 3px;
             word-wrap: break-word;
             line-height: 1.2;
@@ -150,7 +164,6 @@
             max-width: 680px;
             gap: 6px;
         }
-
 
         #displayUserName {
             text-align: center;
@@ -205,6 +218,104 @@
             margin: 12px 0;
         }
 
+        /* Dark Mode Styles */
+
+        .chat-dark {
+            padding: 00px;
+            display: flex;
+            align-content: space-between;
+            align-items: center;
+            max-width: 680px;
+            margin: 0px auto;
+            justify-content: right;
+        }
+
+        .modeSwitch {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            max-width: 200px;
+            text-align: center;
+        }
+
+        .modeSwitch:hover {
+            background-color: #0069d9;
+        }
+
+        .dark-mode .modeSwitch {
+            background-color: #5300d1;
+        }
+
+        .dark-mode .modeSwitch:hover {
+            background-color: #4500b8;
+        }
+
+        .dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .chat {
+            background-color: #1d1d1d;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .my-message {
+            background-color: #3e8e41;
+        }
+
+        .dark-mode .my-name {
+            color: #ff9966;
+        }
+
+        .dark-mode .my-content {
+            color: #ffffff;
+        }
+
+        .dark-mode .other-message {
+            background-color: #2c2c2c;
+            border: 1px solid #8f8f8f;
+        }
+
+        .dark-mode .other-name {
+            color: #2196f3;
+        }
+
+        .dark-mode .private {
+            background-color: #7e57c2;
+            color: #ffffff;
+        }
+
+        .dark-mode .server-message {
+            background-color: #404040;
+            color: #f0f0f0;
+        }
+
+        .dark-mode button {
+            background-color: #6200ea;
+            color: #e0e0e0;
+            border: none;
+        }
+
+        .dark-mode button:hover {
+            background-color: #3700b3;
+        }
+
+        .dark-mode .accordion-header {
+            background-color: #333;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .accordion-content {
+            background-color: #222;
+            color: #e0e0e0;
+        }
+
         @media (max-width: 500px) {
             #chat {
                 padding: 10px;
@@ -214,7 +325,6 @@
                 width: 100%;
                 display: flex;
                 justify-content: space-between;
-                /* align-items: center; */
             }
 
             #recipientSelect {
@@ -222,26 +332,28 @@
             }
         }
     </style>
+
 </head>
 
 <body>
     <p id="displayUserName"></p>
     <p id="displayRoomName"></p>
 
-    <!-- <h1>Open the Console</h1> -->
-
     <!-- Chat UI -->
-    <div id="chat">
+    <div id="chat" class="chat">
         <div id="messages"></div>
         <div id="chat-controls">
             <input type="text" id="messageInput" placeholder="Type your message or /clear to clear chat"
                 style="flex: 1;">
             <div id="divButton">
-                <select id="recipientSelect">
-                </select>
+                <select id="recipientSelect"></select>
                 <button id="sendBtn">Send</button>
             </div>
         </div>
+    </div>
+
+    <div class="chat-dark">
+        <button id="darkModeToggle" class="modeSwitch">Switch to Dark Mode</button>
     </div>
 
     <div class="accordion-item" id="accord">
@@ -250,6 +362,7 @@
             <p><b>/clear</b> - this will clear all messages from chat.</p>
         </div>
     </div>
+
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -279,7 +392,7 @@
             let tempUsername = prompt("Enter your Username.");
             const username = (!tempUsername || !tempUsername.trim() || tempUsername === "") ? randomWord() : tempUsername;
             tempUsername = null;
-            socket.emit("setUsername", {username, roomname: room});
+            socket.emit("setUsername", { username, roomname: room });
             // console.log("Connected to server");
         }
         setupUsername();
@@ -290,14 +403,13 @@
             selfId = id;
             selfName = name;
             window.isAdmin = isAdmin; // Track admin status globally
-            // document.getElementById("displayUserName").textContent = `Logged in as: ${name}`;
             document.getElementById("displayUserName").textContent = `Welcome ${name}${isAdmin ? " (Admin)" : ""}`;
             document.getElementById("displayRoomName").textContent = `Room Name: ${selfRoom}`;
             const instructions = `<p><b>/clear</b> - this will clear all messages from chat.<br><br>
                 As you are admin you can use following commands:<br>
                 1. <b>$kick &ltusername(s)&gt</b> - remove the user from chat. Separate multiple usernames using space.<br>
-                2. <b>$setmax &ltnumber&gt</b> - change the number of max participants in chat. (Default: 2)<br>
-                3. <b>$closeserver</b> - close the chat. This will remove all participants including you.\n<br><br>
+                2. <b>$setmax &ltnumber&gt</b> - change the number of max participants in chat. (Default: 10)<br>
+                3. <b>$closechat</b> - close the chat. This will remove all participants including you.\n<br><br>
                 Examples:<br>1. <b>$kick aa</b> or <b>$kick aa bb</b><br>2. <b>$setmax 4</b></p>`;
             if (window.isAdmin) {
                 document.querySelector(".accordion-content").innerHTML = `${instructions}`;
@@ -347,11 +459,6 @@
             fromMessageBubble("", from, msg)
         });
 
-        socket.on("refresh", () => {
-            console.log("Refreshing command received - reoading page!");
-            location.reload();
-        })
-
         socket.on("connect_error", () => {
             console.warn("Server is unreachable.");
         });
@@ -383,7 +490,7 @@
             }
 
             if (!msg.startsWith("$") && to === "toAll") {
-                socket.emit("message", {msg, roomname: room});
+                socket.emit("message", { msg, roomname: room });
                 addMessageBubble("", msg, "my-message");
                 msgInput.value = "";
                 return;
@@ -396,14 +503,6 @@
                 const args = parts.slice(1);
 
                 switch (command) {
-
-                    case "test":
-                        socket.emit("adminCommand", {
-                            command: "test",
-                            roomname: selfRoom
-                        })
-                        break;
-
                     case "kick":
                         if (args.length === 0) {
                             alert("Usage: $kick <socketId or all>");
@@ -429,9 +528,10 @@
                         }
                         break;
 
-                    case "closeserver":
+                    case "closechat":
                         socket.emit("adminCommand", {
-                            command: "closeServer"
+                            command: "closeServer",
+                            roomname: selfRoom
                         });
                         break;
 
@@ -477,12 +577,21 @@
         }
 
         function fromMessageBubble(status, name, message) {
-            let temp = (status === "") ? `${name}` : `[Private] ${name}`
             const div = document.createElement("div");
 
             const div_a = document.createElement("div");
-            div_a.textContent = temp;
             div_a.classList.add("other-name");
+
+            const divPrName = document.createElement("div");
+            divPrName.textContent = name;
+            div_a.appendChild(divPrName);
+
+            if (status != "") {
+                const divPrivate = document.createElement("div");
+                divPrivate.textContent = "Private "
+                divPrivate.classList.add("private")
+                div_a.appendChild(divPrivate);
+            }
 
             const div_b = document.createElement("div");
             div_b.classList.add("other-content");
@@ -503,6 +612,17 @@
             }
             return result;
         }
+
+        // Toggle Dark Mode
+        document.getElementById('darkModeToggle').addEventListener('click', function () {
+            document.body.classList.toggle('dark-mode');
+
+            if (document.body.classList.contains('dark-mode')) {
+                this.textContent = "Switch to Light Mode";
+            } else {
+                this.textContent = "Switch to Dark Mode";
+            }
+        });
 
         const header = document.querySelector(".accordion-header");
         const content = document.querySelector(".accordion-content");

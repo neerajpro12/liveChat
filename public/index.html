@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
             color: #333;
             margin: 0;
             padding: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         input,
@@ -33,6 +35,10 @@
             cursor: pointer;
         }
 
+        /* .dark-mode button {
+            background-color: #4e4e4e;
+        } */
+
         .main {
             border: 1px solid #ffffff;
             padding: 20px;
@@ -42,9 +48,10 @@
             border-radius: 16px;
             background-color: #fff;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            text-align: center;
+            text-align: left;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        
+
         h1 {
             text-align: center;
         }
@@ -57,8 +64,37 @@
             margin-bottom: 20px;
         }
 
+        .dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .main {
+            background-color: #1d1d1d;
+            color: #e0e0e0;
+            border-color: #444;
+        }
+
+        .dark-mode button {
+            background-color: #6200ea;
+            color: #e0e0e0;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .dark-mode button:hover {
+            background-color: #3700b3;
+        }
+
+
+        .dark-mode h1,
+        .dark-mode h2,
+        .dark-mode p {
+            color: #e0e0e0;
+        }
     </style>
 </head>
+
 <body>
     <h1>Welcome</h1>
     <div class="main">
@@ -69,10 +105,12 @@
         </div>
 
         Instructions:
-        <p>1. Enter the room without space in between.<br>
-        2. If the room with name doesn't exists, it will be created.
+        <p>1. Only uppercase, lowercase letters and numbers allowed.<br>
+            2. If the room with name doesn't exists, it will be created.<br>
+            3. Room limit exists. If exceeded for room you're joining, you will be not allowed to join.
         </p>
-        
+
+        <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     </div>
 
     <script>
@@ -83,12 +121,25 @@
             }
         }
 
+        document.getElementById('room').addEventListener('keypress', function (e) {
+            const regex = /^[a-zA-Z0-9]$/; // Regular expression to allow only alphanumeric characters
+
+            if (!regex.test(e.key)) {
+                e.preventDefault(); // Prevent anything that doesn't match the regex
+            }
+        });
+
         document.getElementById("room").addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); //Prevent New Line
                 document.getElementById("IdJoinBtn").click();
             }
         });
+
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+        }
     </script>
 </body>
+
 </html>
