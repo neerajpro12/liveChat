@@ -126,19 +126,18 @@
             }
         }
 
-        document.getElementById('room').addEventListener('keypress', function (e) {
-            const regex = /^[a-zA-Z0-9]$/; // Regular expression to allow only alphanumeric characters
-
-            if (!regex.test(e.key)) {
-                e.preventDefault(); // Prevent anything that doesn't match the regex
-            }
-        });
-
         document.getElementById("room").addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); //Prevent New Line
                 document.getElementById("IdJoinBtn").click();
             }
+        });
+
+        const inputRoomName= document.getElementById('room');
+
+        input.addEventListener('inputRoomName', function (e) {
+            // Remove any non-alphanumeric characters after input
+            e.target.value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
         });
 
         function toggleDarkMode() {
